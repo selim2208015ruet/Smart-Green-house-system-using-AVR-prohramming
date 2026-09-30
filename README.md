@@ -66,12 +66,15 @@ The project is written in **Embedded C (AVR-GCC / Microchip Studio)** and simula
    Row 1:  T:31 C  Tgt:25C
    Row 2:  Fan:ON  Lt:OFF
    ```
+
 📂 Project Structure
+ ```
 Smart-Greenhouse/
 ├── greenhouse.atsln    # Source code
 ├── schematic.png       # Proteus circuit diagram
 ├── Automated greenhouse.pdsprj  # Proteus simulation file
 └── README.md
+```
 ## 🚀 How to Run
 
 1. Open the project in **Microchip Studio (Atmel Studio)** or any AVR-GCC toolchain.
@@ -81,8 +84,10 @@ Smart-Greenhouse/
 5. Run the simulation. Change the LM35 value and LDR (torch) intensity to see the fan and light respond.
 ---
 🖼️ Circuit Diagram
+```
 <img width="1105" height="742" alt="image" src="https://github.com/user-attachments/assets/0a237a58-6e95-47ed-a04d-cc8ea7997d5f" />
 
+```
 
 ## 🔮 Future Improvements
 
