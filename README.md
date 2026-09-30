@@ -84,10 +84,10 @@ Smart-Greenhouse/
 5. Run the simulation. Change the LM35 value and LDR (torch) intensity to see the fan and light respond.
 ---
 🖼️ Circuit Diagram
-```
+
 <img width="1105" height="742" alt="image" src="https://github.com/user-attachments/assets/0a237a58-6e95-47ed-a04d-cc8ea7997d5f" />
 
-```
+
 
 ## 🔮 Future Improvements
 
