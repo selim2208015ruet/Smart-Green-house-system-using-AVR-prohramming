@@ -1,0 +1,127 @@
+#define F_CPU 16000000UL
+#include <avr/io.h>
+#include <util/delay.h>
+#include <stdio.h>
+
+// LCD Connections
+#define LCD_DATA_PORT PORTC
+#define LCD_DATA_DIR  DDRC
+#define RS PC0
+#define EN PC1
+
+// LCD Command & Data Functions
+void lcd_command(unsigned char cmd) {
+	LCD_DATA_PORT = (LCD_DATA_PORT & 0x0F) | (cmd & 0xF0); // Send High Nibble
+	LCD_DATA_PORT &= ~(1 << RS);
+	LCD_DATA_PORT |= (1 << EN);
+	_delay_us(1);
+	LCD_DATA_PORT &= ~(1 << EN);
+	_delay_us(200);
+
+	LCD_DATA_PORT = (LCD_DATA_PORT & 0x0F) | ((cmd << 4) & 0xF0); // Send Low Nibble
+	LCD_DATA_PORT &= ~(1 << RS);
+	LCD_DATA_PORT |= (1 << EN);
+	_delay_us(1);
+	LCD_DATA_PORT &= ~(1 << EN);
+	_delay_ms(2);
+}
+
+void lcd_char(unsigned char data) {
+	LCD_DATA_PORT = (LCD_DATA_PORT & 0x0F) | (data & 0xF0);
+	LCD_DATA_PORT |= (1 << RS);
+	LCD_DATA_PORT |= (1 << EN);
+	_delay_us(1);
+	LCD_DATA_PORT &= ~(1 << EN);
+	_delay_us(200);
+
+	LCD_DATA_PORT = (LCD_DATA_PORT & 0x0F) | ((data << 4) & 0xF0);
+	LCD_DATA_PORT |= (1 << RS);
+	LCD_DATA_PORT |= (1 << EN);
+	_delay_us(1);
+	LCD_DATA_PORT &= ~(1 << EN);
+	_delay_ms(2);
+}
+
+void lcd_init(void) {
+	LCD_DATA_DIR |= 0xF3; // PC0, PC1, PC4-PC7 Output
+	_delay_ms(20);
+	lcd_command(0x02); // Return Home
+	lcd_command(0x28); // 4-bit mode, 2 lines, 5x7 matrix
+	lcd_command(0x0C); // Display ON, Cursor OFF
+	lcd_command(0x06); // Increment Cursor
+	lcd_command(0x01); // Clear Display
+	_delay_ms(2);
+}
+
+void lcd_string(char *str) {
+	while (*str) {
+		lcd_char(*str++);
+	}
+}
+
+// ADC Initialization & Read
+void adc_init(void) {
+	ADMUX = (1 << REFS0); // AVCC as reference
+	ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // Prescaler 128
+}
+
+uint16_t adc_read(uint8_t ch) {
+	ch &= 0x07;
+	ADMUX = (ADMUX & 0xF8) | ch;
+	ADCSRA |= (1 << ADSC); // Start Conversion
+	while (ADCSRA & (1 << ADSC)); // Wait for completion
+	return ADC;
+}
+
+int main(void) {
+	char buffer[16];
+	uint16_t adc_temp, adc_ldr;
+	float temp_c;
+	
+	// Set PORTD for Motor and Light control
+	DDRD |= (1 << PD4) | (1 << PD5) | (1 << PD6); // Output
+	
+	lcd_init();
+	adc_init();
+	
+	// Default Target Temperature
+	int target_temp = 25;
+
+	while (1) {
+		// Read Temperature Sensor (LM35 on PA0)
+		adc_temp = adc_read(0);
+		temp_c = (adc_temp * 5.0 * 100.0) / 1024.0; // Convert to degree Celsius
+
+		// Read Light Sensor (LDR on PA1)
+		adc_ldr = adc_read(1);
+
+		// Control Fan (Motor) based on Temperature
+		if (temp_c >= target_temp) {
+			PORTD |= (1 << PD5);  // IN1 HIGH
+			PORTD &= ~(1 << PD6); // IN2 LOW -> Fan ON
+			} else {
+			PORTD &= ~((1 << PD5) | (1 << PD6)); // Fan OFF
+		}
+
+		// Control Light (LED on PD4) based on LDR
+		if (adc_ldr < 500) { // Adjust threshold based on daylight
+			PORTD |= (1 << PD4);  // Light ON
+			} else {
+			PORTD &= ~(1 << PD4); // Light OFF
+		}
+
+		// Display on LCD - Row 1
+		lcd_command(0x80); // Move to 1st line
+		sprintf(buffer, "T:%2d C  Tgt:%2dC", (int)temp_c, target_temp);
+		lcd_string(buffer);
+
+		// Display on LCD - Row 2
+		lcd_command(0xC0); // Move to 2nd line
+		sprintf(buffer, "Fan:%-3s Lt:%-3s",
+		(temp_c >= target_temp) ? "ON" : "OFF",
+		(adc_ldr < 500) ? "ON" : "OFF");
+		lcd_string(buffer);
+
+		_delay_ms(500);
+	}
+}
